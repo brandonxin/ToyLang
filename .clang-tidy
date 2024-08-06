@@ -1,0 +1,60 @@
+Checks: >
+  bugprone-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-avoid-do-while,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -misc-non-private-member-variables-in-classes,
+  -misc-const-correctness,
+  -misc-unused-parameters,
+  -misc-no-recursion,
+  -modernize-return-braced-init-list,
+  -modernize-use-trailing-return-type,
+  -modernize-avoid-c-arrays,
+  -modernize-use-nodiscard,
+  -performance-move-const-arg,
+  -readability-braces-around-statements,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+  -readability-named-parameter,
+  -readability-redundant-declaration,
+  -readability-function-cognitive-complexity,
+  -readability-redundant-access-specifiers,
+  -readability-convert-member-functions-to-static,
+  -bugprone-narrowing-conversions,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-unchecked-optional-access
+
+# CheckOptions:
+#   - { key: readability-identifier-naming.NamespaceCase,                  value: lower_case }
+#   - { key: readability-identifier-naming.ClassCase,                      value: CamelCase  }
+#   - { key: readability-identifier-naming.StructCase,                     value: CamelCase  }
+#   - { key: readability-identifier-naming.EnumCase,                       value: CamelCase  }
+#   - { key: readability-identifier-naming.TemplateParameterCase,          value: CamelCase  }
+#   - { key: readability-identifier-naming.FunctionCase,                   value: camelBack }
+#   - { key: readability-identifier-naming.VariableCase,                   value: lower_case }
+#   - { key: readability-identifier-naming.ParameterCase,                  value: lower_case }
+#   - { key: readability-identifier-naming.ClassMemberCase,                value: lower_case }
+#   # - { key: readability-identifier-naming.ClassMemberPrefix,              value: m_         }
+#   - { key: readability-identifier-naming.PrivateMemberCase,              value: lower_case }
+#   # - { key: readability-identifier-naming.PrivateMemberPrefix,            value: m_         }
+#   - { key: readability-identifier-naming.ProtectedMemberCase,            value: lower_case }
+#   # - { key: readability-identifier-naming.ProtectedMemberPrefix,          value: m_         }
+#   - { key: readability-identifier-naming.EnumConstantCase,               value: CamelCase  }
+#   - { key: readability-identifier-naming.ConstexprVariableCase,          value: CamelCase  }
+#   - { key: readability-identifier-naming.GlobalConstantCase,             value: CamelCase  }
+#   - { key: readability-identifier-naming.MemberConstantCase,             value: CamelCase  }
+#   - { key: readability-identifier-naming.StaticConstantCase,             value: CamelCase  }
+#   - { key: readability-implicit-bool-conversion.AllowIntegerConditions,  value: 0          }
+#   - { key: readability-implicit-bool-conversion.AllowPointerConditions,  value: 1          }
+#   - { key: readability-function-cognitive-complexity.IgnoreMacros,       value: 1          }

@@ -1,0 +1,6 @@
+BasedOnStyle: LLVM
+
+AllowShortCaseLabelsOnASingleLine: Yes
+AllowShortFunctionsOnASingleLine: Inline
+AlwaysBreakTemplateDeclarations: Yes
+PackConstructorInitializers: CurrentLine
