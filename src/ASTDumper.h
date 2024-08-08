@@ -35,43 +35,76 @@ public:
     unindent();
   }
 
-  void visit(IfExprAST &E) override {
-    print("IfExpr");
+  void visit(BlockStmtAST &S) override {
+    print("BlockStmt");
     indent();
-    E.getCond().accept(*this);
-    E.getThen().accept(*this);
-    if (auto *Else = E.getElse(); Else != nullptr)
+    for (const auto &Stmt : S.getStmts())
+      Stmt->accept(*this);
+    unindent();
+  }
+
+  void visit(IfStmtAST &S) override {
+    print("IfStmt");
+    indent();
+    S.getCond().accept(*this);
+    S.getThen().accept(*this);
+    if (auto *Else = S.getElse(); Else != nullptr)
       Else->accept(*this);
     unindent();
   }
 
-  void visit(ForExprAST &E) override {
-    print("ForExpr");
+  void visit(WhileStmtAST &S) override {
+    print("WhileStmt");
     indent();
-    E.getStart().accept(*this);
-    E.getEnd().accept(*this);
-    E.getStep().accept(*this);
-    E.getBody().accept(*this);
+    S.getCond().accept(*this);
+    S.getBody().accept(*this);
     unindent();
   }
 
-  void visit(VarExprAST &E) override {
-    print("VarExpr");
+  void visit(VarStmtAST &E) override {
+    print("VarStmt");
     indent();
-    for (const auto &Var : E.getVarNames()) {
-      print("Variable", Var.first);
-      indent();
-      if (Var.second)
-        Var.second->accept(*this);
-      unindent();
-    }
+    print(E.getVarName(), E.getVarType());
+    if (auto *Init = E.getInit(); Init)
+      E.getInit()->accept(*this);
+    unindent();
+  }
+
+  void visit(ReturnStmtAST &S) override {
+    print("ReturnStmt");
+    auto *E = S.getExpr();
+    if (!E)
+      return;
+
+    indent();
+    E->accept(*this);
+    unindent();
+  }
+
+  void visit(ExprStmtAST &S) override {
+    print("ExprStmt");
+    indent();
+    S.getExpr().accept(*this);
     unindent();
   }
 
   void visit(PrototypeAST &P) override {
-    print("Prototype",
-          fmt::format("{}({})", P.getName(),
-                      fmt::join(P.getArgs().begin(), P.getArgs().end(), ",")));
+    std::string out;
+
+    const auto &Params = P.getParams();
+    if (Params.empty())
+      fmt::format_to(std::back_inserter(out), "()");
+    else {
+      fmt::format_to(std::back_inserter(out), "({}", Params[0].second);
+      for (size_t i = 1; i < Params.size(); ++i)
+        fmt::format_to(std::back_inserter(out), ", {}", Params[i].second);
+      fmt::format_to(std::back_inserter(out), ")");
+    }
+    fmt::format_to(std::back_inserter(out), " : {}", P.getReturnType());
+    print("Prototype");
+    indent();
+    print(out);
+    unindent();
   }
 
   void visit(FunctionAST &Fn) override {

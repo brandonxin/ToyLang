@@ -54,15 +54,13 @@ int main(int argc, char *argv[]) {
 
   CompilationUnit Unit;
 
-  Parser P(Stream);
+  Parser P(Stream, argv[optind]);
 
   // Run the main "interpreter loop" now.
   P.Parse(Unit);
 
-  fmt::println("DumpAST {}", DumpAST);
-  if (DumpAST) {
+  if (DumpAST)
     ASTDumper(stdout, Unit);
-  }
 
   return 0;
 }

@@ -18,7 +18,7 @@ enum Token {
   tok_eof = -1,
 
   // commands
-  tok_def = -2,
+  tok_func = -2,
   tok_extern = -3,
 
   // primary
@@ -27,14 +27,10 @@ enum Token {
 
   // control
   tok_if = -6,
-  tok_then = -7,
   tok_else = -8,
   tok_for = -9,
-  tok_in = -10,
-
-  // operators
-  tok_binary = -11,
-  tok_unary = -12,
+  tok_while = -10,
+  tok_return = -11,
 
   // var definition
   tok_var = -13
@@ -60,27 +56,23 @@ public:
     if (isalpha(LastChar)) { // identifier: [a-zA-Z][a-zA-Z0-9]*
       IdentifierStr = (char)LastChar;
 
-      while (isalnum((LastChar = getchar())))
+      while (isalnum((LastChar = getchar())) || LastChar == '_')
         IdentifierStr += (char)LastChar;
 
-      if (IdentifierStr == "def")
-        return tok_def;
+      if (IdentifierStr == "func")
+        return tok_func;
       if (IdentifierStr == "extern")
         return tok_extern;
       if (IdentifierStr == "if")
         return tok_if;
-      if (IdentifierStr == "then")
-        return tok_then;
       if (IdentifierStr == "else")
         return tok_else;
       if (IdentifierStr == "for")
         return tok_for;
-      if (IdentifierStr == "in")
-        return tok_in;
-      if (IdentifierStr == "binary")
-        return tok_binary;
-      if (IdentifierStr == "unary")
-        return tok_unary;
+      if (IdentifierStr == "while")
+        return tok_while;
+      if (IdentifierStr == "return")
+        return tok_return;
       if (IdentifierStr == "var")
         return tok_var;
       return tok_identifier;
@@ -150,7 +142,7 @@ private:
 
 class Parser {
 public:
-  Parser(FILE *Stream) : L(Stream) {
+  Parser(FILE *Stream, std::string Path) : L(Stream), Path(std::move(Path)) {
     // Install standard binary operators.
     // 1 is lowest precedence.
     BinopPrecedence['='] = 2;
@@ -169,7 +161,7 @@ public:
       case ';': // ignore top-level semicolons.
         getNextToken();
         break;
-      case tok_def: HandleDefinition(Unit); break;
+      case tok_func: HandleDefinition(Unit); break;
       case tok_extern: HandleExtern(Unit); break;
       default: assert(false && "unexpected token"); break;
       }
@@ -178,6 +170,8 @@ public:
 
 private:
   Lexer L;
+
+  std::string Path;
 
   /// CurTok/getNextToken - Provide a simple token buffer.  CurTok is the
   /// current token the parser is looking at.  getNextToken reads another token
@@ -211,20 +205,17 @@ private:
     if (Tok > 0)
       return fmt::format("'{}'", char(Tok));
     switch (Tok) {
-    case tok_eof: return fmt::format("<tok_eof>");
-    case tok_def: return fmt::format("<tok_def>");
-    case tok_extern: return fmt::format("<tok_extern>");
-    case tok_identifier: return fmt::format("<tok_identifier>");
-    case tok_number: return fmt::format("<tok_number>");
-    case tok_if: return fmt::format("<tok_if>");
-    case tok_then: return fmt::format("<tok_then>");
-    case tok_else: return fmt::format("<tok_else>");
-    case tok_for: return fmt::format("<tok_for>");
-    case tok_in: return fmt::format("<tok_in>");
-    case tok_binary: return fmt::format("<tok_binary>");
-    case tok_unary: return fmt::format("<tok_unary>");
-    case tok_var: return fmt::format("<tok_var>");
-    default: return fmt::format("<unknown>");
+    case tok_eof: return "<tok_eof>";
+    case tok_func: return "<tok_func>";
+    case tok_extern: return "<tok_extern>";
+    case tok_identifier: return "<tok_identifier>";
+    case tok_number: return "<tok_number>";
+    case tok_if: return "<tok_if>";
+    case tok_else: return "<tok_else>";
+    case tok_for: return "<tok_for>";
+    case tok_while: return "<tok_while>";
+    case tok_var: return "<tok_var>";
+    default: return "<unknown>";
     }
   }
 
@@ -240,12 +231,6 @@ public:
 
     Expected(std::vector<std::string> Strs) : Strs(std::move(Strs)) {}
   };
-
-  // struct Actual {
-  //   int Token;
-
-  //   Actual(int Token) : Token(Token) {}
-  // };
 
   struct In {
     std::string_view Rule;
@@ -265,6 +250,57 @@ private:
   std::nullptr_t logError(const Expected &E, const In &I);
 
   std::nullptr_t logError(const Expected &E, const After &Af);
+
+  std::vector<std::unique_ptr<StmtAST>> ParseStmts() {
+    std::vector<std::unique_ptr<StmtAST>> Stmts;
+
+    while (CurTok != '}') {
+      auto S = ParseStmt();
+      if (!S)
+        continue;
+      Stmts.emplace_back(std::move(S));
+    }
+
+    return Stmts;
+  }
+
+  /// stmt
+  ///   ::= block
+  ///   ::= ifstmt
+  ///   ::= whilestmt
+  ///   ::= varstmt
+  ///   ::= expr ';'
+  ///   ::= ';'
+  std::unique_ptr<StmtAST> ParseStmt() {
+    if (CurTok == '{')
+      return ParseBlockStmt();
+
+    if (CurTok == tok_if)
+      return ParseIfStmt();
+
+    if (CurTok == tok_while)
+      return ParseWhileStmt();
+
+    if (CurTok == tok_var)
+      return ParseVarStmt();
+
+    if (CurTok == tok_return)
+      return ParseReturnStmt();
+
+    if (CurTok == ';') {
+      getNextToken();
+      return nullptr;
+    }
+
+    auto E = ParseExpression();
+    if (!E)
+      return nullptr;
+    if (CurTok != ';')
+      return logError(Expected({';'}), After("expression"));
+    getNextToken();
+
+    return std::make_unique<ExprStmtAST>(std::move(E));
+  }
 
   /// numberexpr ::= number
   std::unique_ptr<ExprAST> ParseNumberExpr() {
@@ -324,8 +360,22 @@ private:
     return std::make_unique<CallExprAST>(IdName, std::move(Args));
   }
 
-  /// ifexpr ::= 'if' expression 'then' expression 'else' expression
-  std::unique_ptr<ExprAST> ParseIfExpr() {
+  /// block ::= '{' stmts '}'
+  std::unique_ptr<StmtAST> ParseBlockStmt() {
+    getNextToken(); // eat '{'.
+    auto Block = ParseStmts();
+
+    if (CurTok != '}')
+      return logError(Expected({'}'}), In("block"));
+
+    getNextToken(); // eat '}'.
+    return std::make_unique<BlockStmtAST>(std::move(Block));
+  }
+
+  /// ifexpr
+  ///   ::= 'if' expr block
+  ///   ::= 'if' expr block else block
+  std::unique_ptr<StmtAST> ParseIfStmt() {
     getNextToken(); // eat the if.
 
     // condition.
@@ -333,124 +383,102 @@ private:
     if (!Cond)
       return nullptr;
 
-    if (CurTok != tok_then) {
-      return logError(Expected({tok_then}), In("if expression"));
-    }
-    getNextToken(); // eat the then
+    if (CurTok != '{')
+      return logError(Expected({'{'}), In("if statement"));
 
-    auto Then = ParseExpression();
+    auto Then = ParseBlockStmt();
     if (!Then)
       return nullptr;
 
-    if (CurTok != tok_else) {
-      return logError(Expected({tok_else}), In("if expression"));
+    if (CurTok != tok_else)
+      return std::make_unique<IfStmtAST>(std::move(Cond), std::move(Then));
+
+    getNextToken(); // eat 'else'.
+    if (CurTok != '{') {
+      return logError(Expected({'{'}), In("if statement"));
     }
 
-    getNextToken();
-
-    auto Else = ParseExpression();
+    auto Else = ParseBlockStmt();
     if (!Else)
       return nullptr;
 
-    return std::make_unique<IfExprAST>(std::move(Cond), std::move(Then),
+    return std::make_unique<IfStmtAST>(std::move(Cond), std::move(Then),
                                        std::move(Else));
   }
 
-  /// forexpr ::= 'for' identifier '=' expr ',' expr (',' expr)? 'in' expression
-  std::unique_ptr<ExprAST> ParseForExpr() {
-    getNextToken(); // eat the for.
+  /// whilestmt ::= 'while' expr block
+  std::unique_ptr<StmtAST> ParseWhileStmt() {
+    getNextToken(); // eat 'while'.
 
-    if (CurTok != tok_identifier) {
-      // return LogError("expected identifier after for");
-      return logError(Expected({tok_identifier}), After("for"));
-    }
-
-    std::string IdName = L.getIdentifierStr();
-    getNextToken(); // eat identifier.
-
-    if (CurTok != '=')
-      return logError(Expected({'='}), After("for"));
-    getNextToken(); // eat '='.
-
-    auto Start = ParseExpression();
-    if (!Start)
-      return nullptr;
-    if (CurTok != ',')
-      return logError(Expected({','}), After("for start value"));
-    getNextToken();
-
-    auto End = ParseExpression();
-    if (!End)
+    auto Cond = ParseExpression();
+    if (!Cond)
       return nullptr;
 
-    // The step value is optional.
-    std::unique_ptr<ExprAST> Step;
-    if (CurTok == ',') {
-      getNextToken();
-      Step = ParseExpression();
-      if (!Step)
-        return nullptr;
+    if (CurTok != '{') {
+      return logError(Expected({'{'}), In("while statement"));
     }
 
-    if (CurTok != tok_in)
-      return logError(Expected({tok_in}), After("for"));
-    getNextToken(); // eat 'in'.
-
-    auto Body = ParseExpression();
+    auto Body = ParseBlockStmt();
     if (!Body)
       return nullptr;
 
-    return std::make_unique<ForExprAST>(IdName, std::move(Start),
-                                        std::move(End), std::move(Step),
-                                        std::move(Body));
+    return std::make_unique<WhileStmtAST>(std::move(Cond), std::move(Body));
   }
 
-  /// varexpr ::= 'var' identifier ('=' expression)?
-  //                    (',' identifier ('=' expression)?)* 'in' expression
-  std::unique_ptr<ExprAST> ParseVarExpr() {
+  /// varstmt ::= 'var' identifier ':' identifier ('=' expr)? ';'
+  std::unique_ptr<StmtAST> ParseVarStmt() {
     getNextToken(); // eat the var.
-
-    std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
 
     // At least one variable name is required.
     if (CurTok != tok_identifier)
       return logError(Expected({tok_identifier}), After("var"));
 
-    while (true) {
-      std::string Name = L.getIdentifierStr();
-      getNextToken(); // eat identifier.
+    std::string Name = L.getIdentifierStr();
+    getNextToken(); // eat identifier.
 
-      // Read the optional initializer.
-      std::unique_ptr<ExprAST> Init = nullptr;
-      if (CurTok == '=') {
-        getNextToken(); // eat the '='.
+    if (CurTok != ':')
+      return logError(Expected({':'}), After("identifier"));
+    getNextToken(); // eat ':'.
 
-        Init = ParseExpression();
-        if (!Init)
-          return nullptr;
-      }
+    if (CurTok != tok_identifier)
+      return logError(Expected({tok_identifier}), After(":"));
 
-      VarNames.push_back(std::make_pair(Name, std::move(Init)));
+    std::string Type = L.getIdentifierStr();
+    getNextToken(); // eat identifier.
 
-      // End of var list, exit loop.
-      if (CurTok != ',')
-        break;
-      getNextToken(); // eat the ','.
+    // Read the optional initializer.
+    std::unique_ptr<ExprAST> Init = nullptr;
+    if (CurTok == '=') {
+      getNextToken(); // eat the '='.
 
-      if (CurTok != tok_identifier)
-        return logError(Expected({tok_identifier}), After("','"));
+      Init = ParseExpression();
+      if (!Init)
+        return nullptr;
     }
 
-    // At this point, we have to have 'in'.
-    if (CurTok != tok_in)
-      return logError(Expected({tok_in}), After("var"));
-    getNextToken(); // eat 'in'.
+    if (CurTok != ';')
+      return logError(Expected({';'}), In("var statement"));
 
-    auto Body = ParseExpression();
-    if (!Body)
+    return std::make_unique<VarStmtAST>(std::move(Name), std::move(Type),
+                                        std::move(Init));
+  }
+
+  /// returnstmt ::= 'return' expr? ';'
+  std::unique_ptr<StmtAST> ParseReturnStmt() {
+    getNextToken(); // eat 'return'.
+
+    if (CurTok == ';')
+      return std::make_unique<ReturnStmtAST>();
+
+    auto E = ParseExpression();
+    if (!E)
       return nullptr;
 
-    return std::make_unique<VarExprAST>(std::move(VarNames), std::move(Body));
+    if (CurTok != ';')
+      return logError(Expected({';'}), After("Expression"));
+    getNextToken();
+
+    return std::make_unique<ReturnStmtAST>(std::move(E));
   }
 
   /// primary
@@ -466,9 +494,6 @@ private:
     case tok_identifier: return ParseIdentifierExpr();
     case tok_number: return ParseNumberExpr();
     case '(': return ParseParenExpr();
-    case tok_if: return ParseIfExpr();
-    case tok_for: return ParseForExpr();
-    case tok_var: return ParseVarExpr();
     }
   }
 
@@ -527,7 +552,6 @@ private:
 
   /// expression
   ///   ::= unary binoprhs
-  ///
   std::unique_ptr<ExprAST> ParseExpression() {
     auto LHS = ParseUnary();
     if (!LHS)
@@ -536,84 +560,65 @@ private:
     return ParseBinOpRHS(0, std::move(LHS));
   }
 
-  /// prototype
-  ///   ::= id '(' id* ')'
-  ///   ::= binary LETTER number? (id, id)
-  ///   ::= unary LETTER (id)
+  /// prototype ::= identifier '(' (param (',' param)*)? ')' ( ':' identifier)?
   std::unique_ptr<PrototypeAST> ParsePrototype() {
     std::string FnName;
 
-    unsigned Kind = 0; // 0 = identifier, 1 = unary, 2 = binary.
-    unsigned BinaryPrecedence = 30;
+    if (CurTok != tok_identifier)
+      return logError(Expected({tok_identifier}), In("prototype"));
 
-    switch (CurTok) {
-    default: return logError(Expected({tok_identifier}), In("prototype"));
-    case tok_identifier:
-      FnName = L.getIdentifierStr();
-      Kind = 0;
-      getNextToken();
-      break;
-    case tok_unary:
-      getNextToken();
-      if (!isascii(CurTok))
-        return logError(Expected({"unary operator"}),
-                        In("programmable unary operators"));
-      FnName = "unary";
-      FnName += (char)CurTok;
-      Kind = 1;
-      getNextToken();
-      break;
-    case tok_binary:
-      getNextToken();
-      if (!isascii(CurTok))
-        return logError(Expected({"binary operator"}),
-                        In("programmable binary operators"));
-      FnName = "binary";
-      FnName += (char)CurTok;
-      Kind = 2;
-      getNextToken();
-
-      // Read the precedence if present.
-      if (CurTok == tok_number) {
-        if (L.getNumVal() < 1 || L.getNumVal() > 100)
-          return logError("Invalid precedence: must be 1..100");
-
-        BinaryPrecedence = (unsigned)L.getNumVal();
-        getNextToken();
-      }
-      break;
-    }
+    FnName = L.getIdentifierStr();
+    getNextToken(); // eat identifier
 
     if (CurTok != '(') {
       return logError(Expected({'('}), In("prototype"));
     }
+    getNextToken(); // eat '('.
 
-    std::vector<std::string> ArgNames;
-    while (getNextToken() == tok_identifier)
-      ArgNames.push_back(L.getIdentifierStr());
-    if (CurTok != ')') {
-      return logError(Expected({')'}), In("prototype"));
+    if (CurTok != tok_identifier && CurTok != ')')
+      return logError(Expected({')', tok_identifier}), In("parameter list"));
+
+    std::vector<std::pair<std::string, std::string>> Params;
+    while (CurTok == tok_identifier) {
+      auto Name = L.getIdentifierStr();
+      if (getNextToken() != ':')
+        return logError(Expected({':'}), After("parameter name"));
+      if (getNextToken() != tok_identifier)
+        return logError(Expected({tok_identifier}), After("':'"));
+      auto Type = L.getIdentifierStr();
+      Params.emplace_back(std::move(Name), std::move(Type));
+      auto Next = getNextToken();
+      if (Next == ')')
+        break;
+      if (Next != ',')
+        return logError(Expected({',', ')'}), After("parameter"));
+      getNextToken();
     }
+    if (CurTok != ')')
+      return logError(Expected({')'}), In("prototype"));
 
-    // success.
     getNextToken(); // eat ')'.
 
-    // Verify right number of names for operator.
-    if (Kind && ArgNames.size() != Kind)
-      return logError("Invalid number of operands for operator");
+    if (CurTok != ':')
+      return std::make_unique<PrototypeAST>(FnName, Params);
 
-    return std::make_unique<PrototypeAST>(FnName, ArgNames, Kind != 0,
-                                          BinaryPrecedence);
+    getNextToken(); // eat ':'.
+    if (CurTok != tok_identifier)
+      return logError(Expected({tok_identifier}), After("':'"));
+
+    auto ReturnType = L.getIdentifierStr();
+    getNextToken(); // eat identifier.
+    return std::make_unique<PrototypeAST>(ReturnType, FnName, Params);
   }
 
-  /// definition ::= 'def' prototype expression
+  /// definition ::= 'func' prototype expression
   std::unique_ptr<FunctionAST> ParseDefinition() {
-    getNextToken(); // eat def.
+    getNextToken(); // eat 'func'.
     auto Proto = ParsePrototype();
     if (!Proto)
       return nullptr;
 
-    if (auto E = ParseExpression())
+    if (auto E = ParseBlockStmt())
       return std::make_unique<FunctionAST>(std::move(Proto), std::move(E));
     return nullptr;
   }
@@ -625,23 +630,11 @@ private:
   }
 
   void HandleDefinition(CompilationUnit &U) {
-    if (auto FnAST = ParseDefinition()) {
-      if (auto &P = FnAST->getProto(); P.isBinaryOp())
-        BinopPrecedence[P.getOperatorName()] = P.getBinaryPrecedence();
-
+    if (auto FnAST = ParseDefinition())
       U.addFunction(std::move(FnAST));
-      // if (auto *FnIR = FnAST->codegen()) {
-      //   fprintf(stderr, "Read function definition:");
-      //   FnIR->print(errs());
-      //   fprintf(stderr, "\n");
-      //   ExitOnErr(TheJIT->addModule(
-      //       ThreadSafeModule(std::move(TheModule), std::move(TheContext))));
-      //   InitializeModuleAndManagers();
-      // }
-    } else {
+    else
       // Skip token for error recovery.
       getNextToken();
-    }
   }
 
   void HandleExtern(CompilationUnit &U) {
@@ -674,7 +667,7 @@ struct formatter<Parser::Expected> : formatter<std::string_view> {
 
 inline std::nullptr_t Parser::logError(std::string_view Str) {
   auto TokPos = L.getLastTokPos();
-  printError("{}:{}: {}", TokPos.first, TokPos.second, Str);
+  printError("{}:{}:{}: {}", Path, TokPos.first, TokPos.second, Str);
   return nullptr;
 }
 

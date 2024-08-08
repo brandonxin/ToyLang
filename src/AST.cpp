@@ -22,15 +22,27 @@ void CallExprAST::accept(ASTVisitor &V) {
   V.visit(*this);
 }
 
-void IfExprAST::accept(ASTVisitor &V) {
+void BlockStmtAST::accept(ASTVisitor &V) {
   V.visit(*this);
 }
 
-void ForExprAST::accept(ASTVisitor &V) {
+void IfStmtAST::accept(ASTVisitor &V) {
   V.visit(*this);
 }
 
-void VarExprAST::accept(ASTVisitor &V) {
+void WhileStmtAST::accept(ASTVisitor &V) {
+  V.visit(*this);
+}
+
+void VarStmtAST::accept(ASTVisitor &V) {
+  V.visit(*this);
+}
+
+void ReturnStmtAST::accept(ASTVisitor &V) {
+  V.visit(*this);
+}
+
+void ExprStmtAST::accept(ASTVisitor &V) {
   V.visit(*this);
 }
 

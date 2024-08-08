@@ -107,13 +107,39 @@ public:
   const std::vector<std::unique_ptr<ExprAST>> &getArgs() const { return Args; }
 };
 
+class StmtAST {
+public:
+  virtual ~StmtAST() = default;
+
+  virtual void accept(ASTVisitor &V) = 0;
+};
+
+class BlockStmtAST : public StmtAST {
+public:
+  BlockStmtAST(std::vector<std::unique_ptr<StmtAST>> Stmts)
+      : Stmts(std::move(Stmts)) {}
+
+  void accept(ASTVisitor &V) override;
+
+  const auto &getStmts() const { return Stmts; }
+
+private:
+  std::vector<std::unique_ptr<StmtAST>> Stmts;
+};
+
 /// IfExprAST - Expression class for if/then/else.
-class IfExprAST : public ExprAST {
-  std::unique_ptr<ExprAST> Cond, Then, Else;
+class IfStmtAST : public StmtAST {
+  std::unique_ptr<ExprAST> Cond;
+  std::unique_ptr<StmtAST> Then, Else;
 
 public:
-  IfExprAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<ExprAST> Then,
-            std::unique_ptr<ExprAST> Else)
+  IfStmtAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<StmtAST> Then)
+      : Cond(std::move(Cond)),
+        Then(std::move(Then)),
+        Else(nullptr) {}
+
+  IfStmtAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<StmtAST> Then,
+            std::unique_ptr<StmtAST> Else)
       : Cond(std::move(Cond)),
         Then(std::move(Then)),
         Else(std::move(Else)) {}
@@ -123,102 +149,110 @@ public:
   void accept(ASTVisitor &V) override;
 
   ExprAST &getCond() const { return *Cond; }
-  ExprAST &getThen() const { return *Then; }
-  ExprAST *getElse() const { return Else.get(); }
+  StmtAST &getThen() const { return *Then; }
+  StmtAST *getElse() const { return Else.get(); }
 };
 
-/// ForExprAST - Expression class for for/in.
-class ForExprAST : public ExprAST {
-  std::string VarName;
-  std::unique_ptr<ExprAST> Start, End, Step, Body;
-
+class WhileStmtAST : public StmtAST {
 public:
-  ForExprAST(const std::string &VarName, std::unique_ptr<ExprAST> Start,
-             std::unique_ptr<ExprAST> End, std::unique_ptr<ExprAST> Step,
-             std::unique_ptr<ExprAST> Body)
-      : VarName(VarName),
-        Start(std::move(Start)),
-        End(std::move(End)),
-        Step(std::move(Step)),
+  WhileStmtAST(std::unique_ptr<ExprAST> Cond, std::unique_ptr<StmtAST> Body)
+      : Cond(std::move(Cond)),
         Body(std::move(Body)) {}
-
-  // Value *codegen() override;
 
   void accept(ASTVisitor &V) override;
 
-  const std::string &getVarName() const { return VarName; }
-  ExprAST &getStart() const { return *Start; }
-  ExprAST &getEnd() const { return *End; }
-  ExprAST &getStep() const { return *Step; }
-  ExprAST &getBody() const { return *Body; }
+  ExprAST &getCond() const { return *Cond; }
+  StmtAST &getBody() const { return *Body; }
+
+private:
+  std::unique_ptr<ExprAST> Cond;
+  std::unique_ptr<StmtAST> Body;
 };
 
 /// VarExprAST - Expression class for var/in
-class VarExprAST : public ExprAST {
-  std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames;
-  std::unique_ptr<ExprAST> Body;
+class VarStmtAST : public StmtAST {
+  std::string VarName;
+  std::string VarType;
+  std::unique_ptr<ExprAST> Init;
 
 public:
-  VarExprAST(
-      std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> VarNames,
-      std::unique_ptr<ExprAST> Body)
-      : VarNames(std::move(VarNames)),
-        Body(std::move(Body)) {}
+  VarStmtAST(std::string VarName, std::string VarType,
+             std::unique_ptr<ExprAST> Init)
+      : VarName(std::move(VarName)),
+        VarType(std::move(VarType)),
+        Init(std::move(Init)) {}
 
   // Value *codegen() override;
 
   void accept(ASTVisitor &V) override;
 
-  const std::vector<std::pair<std::string, std::unique_ptr<ExprAST>>> &
-  getVarNames() const {
-    return VarNames;
-  }
-  ExprAST &getBody() const { return *Body; }
+  std::string_view getVarName() const { return VarName; }
+  std::string_view getVarType() const { return VarType; }
+  ExprAST *getInit() const { return Init.get(); }
+};
+
+class ReturnStmtAST : public StmtAST {
+public:
+  ReturnStmtAST() : Expr(nullptr) {}
+  ReturnStmtAST(std::unique_ptr<ExprAST> Expr) : Expr(std::move(Expr)) {}
+
+  void accept(ASTVisitor &V) override;
+
+  ExprAST *getExpr() const { return Expr.get(); }
+
+private:
+  std::unique_ptr<ExprAST> Expr;
+};
+
+class ExprStmtAST : public StmtAST {
+public:
+  ExprStmtAST(std::unique_ptr<ExprAST> Expr) : Expr(std::move(Expr)) {}
+
+  void accept(ASTVisitor &V) override;
+
+  ExprAST &getExpr() const { return *Expr; }
+
+private:
+  std::unique_ptr<ExprAST> Expr;
 };
 
 /// PrototypeAST - This class represents the "prototype" for a function,
 /// which captures its name, and its argument names (thus implicitly the number
 /// of arguments the function takes), as well as if it is an operator.
 class PrototypeAST {
+  std::string ReturnType;
   std::string Name;
-  std::vector<std::string> Args;
-  bool IsOperator;
-  unsigned Precedence; // Precedence if a binary op.
+  std::vector<std::pair<std::string, std::string>> Params;
 
 public:
-  PrototypeAST(const std::string &Name, std::vector<std::string> Args,
-               bool IsOperator = false, unsigned Prec = 0)
-      : Name(Name),
-        Args(std::move(Args)),
-        IsOperator(IsOperator),
-        Precedence(Prec) {}
+  PrototypeAST(std::string Name,
+               std::vector<std::pair<std::string, std::string>> Params)
+      : ReturnType("void"),
+        Name(std::move(Name)),
+        Params(std::move(Params)) {}
+  PrototypeAST(std::string ReturnType, std::string Name,
+               std::vector<std::pair<std::string, std::string>> Params)
+      : ReturnType(std::move(ReturnType)),
+        Name(std::move(Name)),
+        Params(std::move(Params)) {}
 
   // Function *codegen();
 
   void accept(ASTVisitor &V);
 
+  const auto &getReturnType() const { return ReturnType; }
   const auto &getName() const { return Name; }
-  const auto &getArgs() const { return Args; }
-
-  bool isUnaryOp() const { return IsOperator && Args.size() == 1; }
-  bool isBinaryOp() const { return IsOperator && Args.size() == 2; }
-
-  char getOperatorName() const {
-    assert(isUnaryOp() || isBinaryOp());
-    return Name[Name.size() - 1];
-  }
-
-  unsigned getBinaryPrecedence() const { return Precedence; }
+  const auto &getParams() const { return Params; }
 };
 
 /// FunctionAST - This class represents a function definition itself.
 class FunctionAST {
   std::unique_ptr<PrototypeAST> Proto;
-  std::unique_ptr<ExprAST> Body;
+  std::unique_ptr<StmtAST> Body;
 
 public:
   FunctionAST(std::unique_ptr<PrototypeAST> Proto,
-              std::unique_ptr<ExprAST> Body)
+              std::unique_ptr<StmtAST> Body)
       : Proto(std::move(Proto)),
         Body(std::move(Body)) {}
 
@@ -227,7 +261,7 @@ public:
   void accept(ASTVisitor &V);
 
   PrototypeAST &getProto() const { return *Proto; }
-  ExprAST &getBody() const { return *Body; }
+  StmtAST &getBody() const { return *Body; }
 };
 
 class CompilationUnit {
