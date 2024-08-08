@@ -1,0 +1,42 @@
+definition ::= 'func' prototype ('->' indentifier)? block
+external   ::= 'extern' prototype ';'
+prototype  ::= identifier '(' (param (',' param)*)? ')'
+param      ::= identifier ':' identifier
+
+stmts ::= stmt*
+stmt
+    ::= block
+    ::= ifstmt
+    ::= whilestmt
+    ::= varstmt
+    ::= returnstmt
+    ::= exprstmt
+    ::= ';'
+
+block ::= '{' stmts '}'
+ifexpr
+    ::= 'if' expr block 
+    ::= 'if' expr block 'else' block
+whilestmt ::= 'while' expr block
+varstmt ::= 'var' identifier ':' identifier ('=' expr)? ';'
+returnstmt ::= 'return' expr? ';'
+exprstmt ::= expr ';'
+
+expr
+    ::= unary binoprhs
+binoprhs
+    ::= ('+' unary)*
+unary
+    ::= primary
+    ::= '!' unary
+
+primary
+    ::= identifierexpr
+    ::= numberexpr
+    ::= parenexpr
+    
+numberexpr ::= number
+parenexpr ::= '(' expr ')'
+identifierexpr
+	::= identifier
+	::= identifier '(' expr* ')'
