@@ -5,8 +5,8 @@
 #include <memory>
 #include <string>
 
-#include "AST.h"
-#include "Error.h"
+#include "parser/AST.h"
+#include "parser/Error.h"
 
 //===----------------------------------------------------------------------===//
 // Lexer

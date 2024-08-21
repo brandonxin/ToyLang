@@ -2,7 +2,7 @@
 
 #include "fmt/format.h"
 
-#include "ASTVisitor.h"
+#include "parser/ASTVisitor.h"
 
 class ASTDumper : public ASTVisitor {
 public:

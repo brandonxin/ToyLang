@@ -1,6 +1,6 @@
-#include "AST.h"
+#include "parser/AST.h"
 
-#include "ASTVisitor.h"
+#include "parser/ASTVisitor.h"
 
 void NumberExprAST::accept(ASTVisitor &V) {
   V.visit(*this);

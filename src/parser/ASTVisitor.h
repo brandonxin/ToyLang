@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AST.h"
+#include "parser/AST.h"
 
 class ASTVisitor {
 public:

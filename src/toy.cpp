@@ -1,7 +1,7 @@
 #include <getopt.h>
 
-#include "ASTDumper.h"
-#include "Parser.h"
+#include "parser/ASTDumper.h"
+#include "parser/Parser.h"
 
 //===----------------------------------------------------------------------===//
 // Main driver code.
