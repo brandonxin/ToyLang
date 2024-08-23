@@ -4,8 +4,8 @@
 #include <map>
 #include <ranges>
 
-#include "ir/CompilationUnit.h"
 #include "ir/Function.h"
+#include "ir/IRCompilationUnit.h"
 #include "ir/Value.h"
 #include "parser/AST.h"
 #include "parser/ASTVisitor.h"
