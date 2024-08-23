@@ -216,10 +216,17 @@ private:
   std::unique_ptr<ExprAST> Expr;
 };
 
+class TopLevelDeclarationAST {
+public:
+  virtual ~TopLevelDeclarationAST() = 0;
+
+  virtual void accept(ASTVisitor &) = 0;
+};
+
 /// PrototypeAST - This class represents the "prototype" for a function,
 /// which captures its name, and its argument names (thus implicitly the number
 /// of arguments the function takes), as well as if it is an operator.
-class PrototypeAST {
+class PrototypeAST : public TopLevelDeclarationAST {
   std::string ReturnType;
   std::string Name;
   std::vector<std::pair<std::string, std::string>> Params;
@@ -238,7 +245,7 @@ public:
 
   // Function *codegen();
 
-  void accept(ASTVisitor &V);
+  void accept(ASTVisitor &V) override;
 
   const auto &getReturnType() const { return ReturnType; }
   const auto &getName() const { return Name; }
@@ -246,7 +253,7 @@ public:
 };
 
 /// FunctionAST - This class represents a function definition itself.
-class FunctionAST {
+class FunctionAST : public TopLevelDeclarationAST {
   std::unique_ptr<PrototypeAST> Proto;
   std::unique_ptr<StmtAST> Body;
 
@@ -258,7 +265,7 @@ public:
 
   // Function *codegen();
 
-  void accept(ASTVisitor &V);
+  void accept(ASTVisitor &V) override;
 
   PrototypeAST &getProto() const { return *Proto; }
   StmtAST &getBody() const { return *Body; }
@@ -267,25 +274,23 @@ public:
 class CompilationUnit {
 public:
   CompilationUnit() = default;
-  CompilationUnit(std::vector<std::unique_ptr<PrototypeAST>> Protos,
-                  std::vector<std::unique_ptr<FunctionAST>> Funcs)
-      : Protos(std::move(Protos)),
-        Funcs(std::move(Funcs)) {}
+  CompilationUnit(std::vector<std::unique_ptr<TopLevelDeclarationAST>> Decls)
+      : Decls(std::move(Decls)) {}
 
   void addPrototype(std::unique_ptr<PrototypeAST> &&Proto) {
-    Protos.emplace_back(std::move(Proto));
+    Decls.emplace_back(std::move(Proto));
   }
 
   void addFunction(std::unique_ptr<FunctionAST> &&Func) {
-    Funcs.emplace_back(std::move(Func));
+    Decls.emplace_back(std::move(Func));
   }
 
-  const auto &getProtos() const { return Protos; }
-  const auto &getFuncs() const { return Funcs; }
+  std::vector<std::unique_ptr<TopLevelDeclarationAST>> &getDecls() {
+    return Decls;
+  }
 
   void accept(ASTVisitor &V);
 
 private:
-  std::vector<std::unique_ptr<PrototypeAST>> Protos;
-  std::vector<std::unique_ptr<FunctionAST>> Funcs;
+  std::vector<std::unique_ptr<TopLevelDeclarationAST>> Decls;
 };

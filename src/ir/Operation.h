@@ -5,7 +5,7 @@ class Operation {
 public:
   Operation(const Operation &) = delete;
   Operation(Operation &&) = default;
-  virtual ~Operation() = default;
+  virtual ~Operation() = 0;
 
   Operation &operator=(const Operation &) = delete;
   Operation &operator=(Operation &&) = default;
