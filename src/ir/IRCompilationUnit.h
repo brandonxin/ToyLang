@@ -9,8 +9,7 @@
 class IRCompilationUnit {
 public:
   Function *lookupFunction(const std::string &Name);
-  Function *makeNewFunction(std::string Name,
-                            std::vector<std::string> ParamsName);
+  Function *makeNewFunction(std::string Name, size_t ParamsNum);
 
 private:
   std::map<std::string, std::unique_ptr<Function>> AllFunctions;

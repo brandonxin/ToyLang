@@ -89,6 +89,7 @@ public:
   void visit(VarStmtAST &) override;
   void visit(ReturnStmtAST &) override;
   void visit(ExprStmtAST &) override;
+  void visit(FunctionAST &FnAST) override;
 
 private:
   IRCompilationUnit &IRUnit;

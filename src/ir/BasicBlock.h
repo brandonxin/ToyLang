@@ -3,16 +3,20 @@
 
 #include <vector>
 
-#include "ir/Operation.h"
+#include "ir/Instruction.h"
 #include "ir/Value.h"
 
 class BasicBlock : public Value {
 public:
-private:
-  std::vector<BasicBlock *> Preds;
-  std::vector<BasicBlock *> Succs;
+  bool isLValue() override { return false; }
 
-  std::vector<std::unique_ptr<Operation>> AllOps;
+  void append(std::unique_ptr<Instruction> Inst);
+  Instruction *getLastInst();
+
+private:
+  // TODO: Use Use/Def Chain to track Preds. Use Terminator to track Succs.
+
+  std::vector<std::unique_ptr<Instruction>> AllInsts;
 };
 
 #endif // !TOY_LANG_IR_BASIC_BLOCK_H
