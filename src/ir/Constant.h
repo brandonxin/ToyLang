@@ -7,7 +7,7 @@
 
 class Constant : public Value {
 public:
-  Constant(int64_t Val) : Val(Val) {}
+  Constant(int64_t ID, int64_t Val) : Value(ID), Val(Val) {}
 
 private:
   int64_t Val;

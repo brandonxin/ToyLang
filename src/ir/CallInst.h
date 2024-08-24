@@ -6,8 +6,9 @@
 
 class CallInst : public Instruction {
 public:
-  CallInst(Function *Callee, std::vector<Value *> Arguments)
-      : Callee(Callee),
+  CallInst(int64_t ID, Function *Callee, std::vector<Value *> Arguments)
+      : Instruction(ID),
+        Callee(Callee),
         Arguments(Arguments) {}
 
 private:

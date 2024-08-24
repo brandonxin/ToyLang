@@ -7,11 +7,15 @@
 
 class Instruction : public Value {
 public:
+  Instruction(int64_t ID) : Value(ID) {}
 };
 
 class StoreInst : public Instruction {
 public:
-  StoreInst(Value *Ptr, Value *Val) : Ptr(Ptr), Val(Val) {}
+  StoreInst(int64_t ID, Value *Ptr, Value *Val)
+      : Instruction(ID),
+        Ptr(Ptr),
+        Val(Val) {}
 
 private:
   Value *Ptr;
@@ -20,7 +24,7 @@ private:
 
 class LoadInst : public Instruction {
 public:
-  LoadInst(Value *Ptr) : Ptr(Ptr) {}
+  LoadInst(int64_t ID, Value *Ptr) : Instruction(ID), Ptr(Ptr) {}
 
 private:
   Value *Ptr;
@@ -34,8 +38,9 @@ public:
     Mul,
   };
 
-  ArithmeticInst(Opcode Opc, Value *LHS, Value *RHS)
-      : Opc(Opc),
+  ArithmeticInst(int64_t ID, Opcode Opc, Value *LHS, Value *RHS)
+      : Instruction(ID),
+        Opc(Opc),
         Operands{LHS, RHS} {}
 
 private:
@@ -45,7 +50,7 @@ private:
 
 class ReturnInst : public Instruction {
 public:
-  ReturnInst(Value *Ret) : Ret(Ret) {}
+  ReturnInst(int64_t ID, Value *Ret) : Instruction(ID), Ret(Ret) {}
 
   bool isTerminator() override { return true; }
 

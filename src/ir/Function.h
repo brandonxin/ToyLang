@@ -26,7 +26,8 @@ public:
 
   template <typename T, typename... ArgTs>
   Instruction *emit(ArgTs &&...Args) {
-    auto Inst = std::make_unique<T>(std::forward<ArgTs>(Args)...);
+    auto Inst =
+        std::make_unique<T>(NextValueID++, std::forward<ArgTs>(Args)...);
     auto *Ret = Inst.get();
     InsertPoint->append(std::move(Inst));
     return Ret;
@@ -38,7 +39,7 @@ private:
   std::vector<std::unique_ptr<Constant>> AllConstants;
   BasicBlock *EntryBlock = nullptr;
   BasicBlock *InsertPoint = nullptr;
-  size_t InstCount = 0;
+  size_t NextValueID = 0;
 };
 
 #endif // !TOY_LANG_IR_FUNCTION_H

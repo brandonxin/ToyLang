@@ -5,6 +5,8 @@
 
 class AllocaInst : public Instruction {
 public:
+  AllocaInst(int64_t ID) : Instruction(ID) {}
+
   bool isLValue() override { return true; }
 };
 

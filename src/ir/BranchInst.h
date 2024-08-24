@@ -6,12 +6,14 @@
 
 class BranchInst : public Instruction {
 public:
+  BranchInst(int64_t ID) : Instruction(ID) {}
+
   bool isTerminator() override { return true; }
 };
 
 class JumpInst : public BranchInst {
 public:
-  JumpInst(BasicBlock *Dest) : Dest(Dest) {}
+  JumpInst(int64_t ID, BasicBlock *Dest) : BranchInst(ID), Dest(Dest) {}
 
 private:
   BasicBlock *Dest;
@@ -19,8 +21,9 @@ private:
 
 class CJumpInst : public BranchInst {
 public:
-  CJumpInst(Value *Cond, BasicBlock *IfTrue, BasicBlock *IfElse)
-      : Cond(Cond),
+  CJumpInst(int64_t ID, Value *Cond, BasicBlock *IfTrue, BasicBlock *IfElse)
+      : BranchInst(ID),
+        Cond(Cond),
         IfTrue(IfTrue),
         IfElse(IfElse) {}
 

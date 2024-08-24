@@ -1,5 +1,5 @@
 #include "irgen/IRGenerator.h"
-#include "ir/Alloca.h"
+#include "ir/AllocaInst.h"
 #include "ir/BranchInst.h"
 #include "ir/CallInst.h"
 #include "ir/Instruction.h"

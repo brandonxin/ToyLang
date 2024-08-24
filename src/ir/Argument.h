@@ -5,6 +5,8 @@
 
 class Argument : public Value {
 public:
+  Argument(int64_t ID) : Value(ID) {}
+
   bool isLValue() override { return true; }
 };
 
