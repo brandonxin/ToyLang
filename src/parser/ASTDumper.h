@@ -116,9 +116,7 @@ public:
   }
 
   void visit(CompilationUnit &U) override {
-    for (const auto &P : U.getProtos())
-      P->accept(*this);
-    for (const auto &Fn : U.getFuncs())
+    for (const auto &Fn : U.getDecls())
       Fn->accept(*this);
   }
 

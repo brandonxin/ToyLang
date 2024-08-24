@@ -1,5 +1,6 @@
 #include <getopt.h>
 
+#include "irgen/IRGenerator.h"
 #include "parser/ASTDumper.h"
 #include "parser/Parser.h"
 
@@ -61,6 +62,9 @@ int main(int argc, char *argv[]) {
 
   if (DumpAST)
     ASTDumper(stdout, Unit);
+
+  irgen::IRGenerator IRGen;
+  Unit.accept(IRGen);
 
   return 0;
 }

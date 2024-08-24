@@ -46,6 +46,8 @@ void ExprStmtAST::accept(ASTVisitor &V) {
   V.visit(*this);
 }
 
+TopLevelDeclarationAST::~TopLevelDeclarationAST() {}
+
 void PrototypeAST::accept(ASTVisitor &V) {
   V.visit(*this);
 }

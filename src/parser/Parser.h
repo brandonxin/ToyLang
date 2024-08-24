@@ -490,7 +490,9 @@ private:
   ///   ::= varexpr
   std::unique_ptr<ExprAST> ParsePrimary() {
     switch (CurTok) {
-    default: return logError("unknown token when expecting an expression");
+    default:
+      return logError(Expected({tok_identifier, tok_number, '('}),
+                      In("primary"));
     case tok_identifier: return ParseIdentifierExpr();
     case tok_number: return ParseNumberExpr();
     case '(': return ParseParenExpr();

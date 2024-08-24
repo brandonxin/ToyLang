@@ -35,6 +35,11 @@ BasicBlock *Function::makeNewBlock() {
   return AllBlocks.back().get();
 }
 
+Constant *Function::makeConstant(int64_t Val) {
+  AllConstants.push_back(std::make_unique<Constant>(Val));
+  return AllConstants.back().get();
+}
+
 // void Function::emitCJump(Value *Cond, BasicBlock *T, BasicBlock *F) {
 //   InsertPoint->append(std::make_unique<CJumpOp>(Cond, T, F));
 // }

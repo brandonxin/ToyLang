@@ -99,9 +99,12 @@ private:
 
 class ExprVisitor : public ASTVisitor {
 public:
-  ExprVisitor(IRCompilationUnit &IRUnit, NestedScope &NS, Function &Fn);
+  ExprVisitor(IRCompilationUnit &IRUnit, NestedScope &NS, Function &Fn)
+      : IRUnit(IRUnit),
+        NS(NS),
+        Fn(Fn) {}
 
-  Value *getResult();
+  Value *getResult() { return Result; }
 
   void visit(NumberExprAST &Num) override;
   void visit(VariableExprAST &Var) override;

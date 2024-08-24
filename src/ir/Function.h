@@ -22,7 +22,7 @@ public:
   BasicBlock *getCurrInsertPoint() const { return InsertPoint; }
 
   BasicBlock *makeNewBlock();
-  Value *makeConstant(int64_t Val);
+  Constant *makeConstant(int64_t Val);
 
   template <typename T, typename... ArgTs>
   Instruction *emit(ArgTs &&...Args) {

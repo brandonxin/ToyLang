@@ -111,7 +111,7 @@ void FunctionVisitor::visit(ReturnStmtAST &Return) {
     Return.accept(V);
     Fn.emit<ReturnInst>(V.getResult());
   } else {
-    Fn.emit<ReturnInst>();
+    Fn.emit<ReturnInst>(Fn.makeConstant(0));
   }
 }
 
