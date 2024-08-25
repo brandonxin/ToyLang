@@ -7,6 +7,8 @@ class Argument : public Value {
 public:
   Argument(int64_t ID) : Value(ID) {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
   bool isLValue() override { return true; }
 };
 

@@ -15,6 +15,10 @@ class JumpInst : public BranchInst {
 public:
   JumpInst(int64_t ID, BasicBlock *Dest) : BranchInst(ID), Dest(Dest) {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
+  BasicBlock *getDest() { return Dest; }
+
 private:
   BasicBlock *Dest;
 };
@@ -26,6 +30,12 @@ public:
         Cond(Cond),
         IfTrue(IfTrue),
         IfElse(IfElse) {}
+
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
+  Value *getCond() { return Cond; }
+  BasicBlock *getTrueBB() { return IfTrue; }
+  BasicBlock *getFalseBB() { return IfElse; }
 
 private:
   Value *Cond;

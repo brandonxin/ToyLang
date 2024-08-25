@@ -71,6 +71,8 @@ public:
   void visit(FunctionAST &FnAST) override;
   void visit(CompilationUnit &Unit) override;
 
+  IRCompilationUnit &getIR() { return IRUnit; }
+
 private:
   Function *makeFunction(PrototypeAST &ProtoAST);
 

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "ir/IRVisitor.h"
+
 class Value {
 public:
   Value(int64_t ID) : ID(ID) {}
@@ -13,6 +15,8 @@ public:
   Value &operator=(Value &&) = default;
 
   virtual ~Value() = 0;
+
+  virtual void accept(IRVisitor &V) = 0;
 
   virtual bool isLValue() { return false; }
   virtual bool isTerminator() { return false; }

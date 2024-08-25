@@ -11,6 +11,11 @@ public:
         Callee(Callee),
         Arguments(Arguments) {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
+  Function *getCallee() { return Callee; }
+  std::vector<Value *> getArguments() { return Arguments; }
+
 private:
   Function *Callee;
   std::vector<Value *> Arguments;

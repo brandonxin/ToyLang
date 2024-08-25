@@ -4,3 +4,5 @@ add_library(ir STATIC
     IRCompilationUnit.cpp
     Value.cpp
 )
+
+target_link_libraries(ir PUBLIC fmt::fmt)

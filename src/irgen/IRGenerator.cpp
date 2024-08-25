@@ -23,6 +23,8 @@ void IRGenerator::visit(FunctionAST &FnAST) {
   if (!Fn)
     Fn = makeFunction(FnAST.getProto());
 
+  Fn->setInsertPoint(Fn->makeEntryBlock());
+
   FunctionVisitor FnVisitor(IRUnit, NS, *Fn);
   FnAST.accept(FnVisitor);
 }
@@ -108,7 +110,7 @@ void FunctionVisitor::visit(VarStmtAST &Var) {
 void FunctionVisitor::visit(ReturnStmtAST &Return) {
   if (auto *Expr = Return.getExpr()) {
     ExprVisitor V(IRUnit, NS, Fn);
-    Return.accept(V);
+    Expr->accept(V);
     Fn.emit<ReturnInst>(V.getResult());
   } else {
     Fn.emit<ReturnInst>(Fn.makeConstant(0));
@@ -117,12 +119,12 @@ void FunctionVisitor::visit(ReturnStmtAST &Return) {
 
 void FunctionVisitor::visit(ExprStmtAST &ExprStmt) {
   ExprVisitor V(IRUnit, NS, Fn);
-  ExprStmt.accept(V);
+  ExprStmt.getExpr().accept(V);
 }
 
 void FunctionVisitor::visit(FunctionAST &FnAST) {
   const auto &Params = FnAST.getProto().getParams();
-  const auto &ParamsValue = Fn.getParams();
+  const auto &ParamsValue = Fn.getArgs();
   assert(Params.size() == ParamsValue.size());
 
   auto Guard = NS.openNewScope();

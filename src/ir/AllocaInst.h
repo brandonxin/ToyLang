@@ -7,6 +7,8 @@ class AllocaInst : public Instruction {
 public:
   AllocaInst(int64_t ID) : Instruction(ID) {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
   bool isLValue() override { return true; }
 };
 

@@ -11,14 +11,13 @@
 #include "ir/Constant.h"
 #include "ir/Instruction.h"
 
-Function::Function(size_t ParamsNum) {
-  Parameters.reserve(ParamsNum);
+Function::Function(std::string Name, size_t ParamsNum) : Name(std::move(Name)) {
+  Arguments.reserve(ParamsNum);
   while (ParamsNum--)
-    Parameters.push_back(std::make_unique<Argument>(NextValueID++));
+    Arguments.push_back(makeValue<Argument>());
 
-  AllBlocks.push_back(std::make_unique<BasicBlock>(NextValueID++));
-  EntryBlock = AllBlocks.back().get();
-  InsertPoint = AllBlocks.back().get();
+  // DO NOT create EntryBlock now, because it can be a external linkage
+  // function.
 }
 
 void Function::setInsertPoint(BasicBlock *B) {
@@ -31,11 +30,11 @@ void Function::setInsertPoint(BasicBlock *B) {
 }
 
 BasicBlock *Function::makeNewBlock() {
-  AllBlocks.push_back(std::make_unique<BasicBlock>(NextValueID++));
+  AllBlocks.push_back(makeValue<BasicBlock>());
   return AllBlocks.back().get();
 }
 
 Constant *Function::makeConstant(int64_t Val) {
-  AllConstants.push_back(std::make_unique<Constant>(NextValueID++, Val));
+  AllConstants.push_back(makeValue<Constant>(Val));
   return AllConstants.back().get();
 }

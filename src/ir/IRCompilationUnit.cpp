@@ -2,16 +2,20 @@
 #include "ir/Function.h"
 
 Function *IRCompilationUnit::lookupFunction(const std::string &Name) {
-  auto Iter = AllFunctions.find(Name);
-  return (Iter == AllFunctions.end()) ? nullptr : Iter->second.get();
+  auto Iter = FunctionTable.find(Name);
+  return (Iter == FunctionTable.end()) ? nullptr : Iter->second;
 }
 
 Function *IRCompilationUnit::makeNewFunction(std::string Name,
                                              size_t ParamsNum) {
-  auto [Iter, success] = AllFunctions.emplace(Name, nullptr);
+  auto [Iter, success] = FunctionTable.emplace(Name, nullptr);
   if (!success)
     return nullptr;
 
-  Iter->second = std::make_unique<Function>(std::move(ParamsNum));
-  return Iter->second.get();
+  auto NewFn =
+      std::make_unique<Function>(std::move(Name), std::move(ParamsNum));
+
+  Iter->second = NewFn.get();
+  AllFunctions.emplace_back(std::move(NewFn));
+  return Iter->second;
 }

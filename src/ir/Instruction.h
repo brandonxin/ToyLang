@@ -8,6 +8,8 @@
 class Instruction : public Value {
 public:
   Instruction(int64_t ID) : Value(ID) {}
+
+  virtual void accept(IRVisitor &V) = 0;
 };
 
 class StoreInst : public Instruction {
@@ -17,6 +19,11 @@ public:
         Ptr(Ptr),
         Val(Val) {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
+  Value *getPtr() { return Ptr; }
+  Value *getVal() { return Val; }
+
 private:
   Value *Ptr;
   Value *Val;
@@ -25,6 +32,10 @@ private:
 class LoadInst : public Instruction {
 public:
   LoadInst(int64_t ID, Value *Ptr) : Instruction(ID), Ptr(Ptr) {}
+
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
+  Value *getPtr() { return Ptr; }
 
 private:
   Value *Ptr;
@@ -43,6 +54,12 @@ public:
         Opc(Opc),
         Operands{LHS, RHS} {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
+  Value *getLHS() { return Operands[0]; }
+  Value *getRHS() { return Operands[1]; }
+  Opcode getOpc() { return Opc; }
+
 private:
   Opcode Opc;
   std::array<Value *, 2> Operands;
@@ -52,7 +69,11 @@ class ReturnInst : public Instruction {
 public:
   ReturnInst(int64_t ID, Value *Ret) : Instruction(ID), Ret(Ret) {}
 
+  void accept(IRVisitor &V) override { V.visit(*this); }
+
   bool isTerminator() override { return true; }
+
+  Value *getVal() { return Ret; }
 
 private:
   Value *Ret;

@@ -1,22 +1,41 @@
 #ifndef TOY_LANG_IR_FUNCTION_H
 #define TOY_LANG_IR_FUNCTION_H
 
+#include <cassert>
 #include <memory>
 #include <vector>
 
+#include "ir/Argument.h"
 #include "ir/BasicBlock.h"
 #include "ir/Constant.h"
+#include "ir/IRVisitor.h"
 #include "ir/Instruction.h"
 #include "ir/Value.h"
 
 class Function {
 public:
   /// We support only 1 type yet, so there is no need to passing a vector.
-  Function(size_t ParamsNum);
+  Function(std::string Name, size_t ParamsNum);
 
-  std::vector<std::unique_ptr<Value>> &getParams() { return Parameters; }
+  void accept(IRVisitor &V) { V.visit(*this); }
 
-  BasicBlock *getEntryBlock() const { return EntryBlock; }
+  std::string &getName() { return Name; }
+  std::vector<std::unique_ptr<Argument>> &getArgs() { return Arguments; }
+
+  BasicBlock *makeEntryBlock() {
+    assert(AllBlocks.empty() && "EntryBlock exists");
+    makeNewBlock();
+    return AllBlocks.front().get();
+  }
+
+  BasicBlock *getEntryBlock() const {
+    if (AllBlocks.empty())
+      return nullptr;
+
+    return AllBlocks.front().get();
+  }
+
+  std::vector<std::unique_ptr<BasicBlock>> &getBlocks() { return AllBlocks; }
 
   void setInsertPoint(BasicBlock *B);
   BasicBlock *getCurrInsertPoint() const { return InsertPoint; }
@@ -26,18 +45,23 @@ public:
 
   template <typename T, typename... ArgTs>
   Instruction *emit(ArgTs &&...Args) {
-    auto Inst =
-        std::make_unique<T>(NextValueID++, std::forward<ArgTs>(Args)...);
+    auto Inst = makeValue<T>(std::forward<ArgTs>(Args)...);
     auto *Ret = Inst.get();
     InsertPoint->append(std::move(Inst));
     return Ret;
   }
 
 private:
-  std::vector<std::unique_ptr<Value>> Parameters;
+  template <typename T, typename... Ts>
+  std::unique_ptr<T> makeValue(Ts &&...Args) {
+    return std::make_unique<T>(NextValueID++, std::forward<Ts>(Args)...);
+  }
+
+private:
+  std::string Name;
+  std::vector<std::unique_ptr<Argument>> Arguments;
   std::vector<std::unique_ptr<BasicBlock>> AllBlocks;
   std::vector<std::unique_ptr<Constant>> AllConstants;
-  BasicBlock *EntryBlock = nullptr;
   BasicBlock *InsertPoint = nullptr;
   size_t NextValueID = 0;
 };
