@@ -5,11 +5,12 @@
 
 class AllocaInst : public Instruction {
 public:
-  AllocaInst(int64_t ID) : Instruction(ID) {}
+  AllocaInst(std::string Name = "") : Instruction(std::move(Name)) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
 
   bool isLValue() override { return true; }
+  bool hasResult() override { return true; }
 };
 
 #endif // !TOY_LANG_IR_ALLOCA_H

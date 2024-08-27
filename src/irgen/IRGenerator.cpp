@@ -8,8 +8,10 @@
 namespace irgen {
 
 Function *IRGenerator::makeFunction(PrototypeAST &ProtoAST) {
-  return IRUnit.makeNewFunction(ProtoAST.getName(),
-                                ProtoAST.getParams().size());
+  std::vector<std::string> Params;
+  for (const auto &Param : ProtoAST.getParams())
+    Params.push_back(Param.first);
+  return IRUnit.makeNewFunction(ProtoAST.getName(), Params);
 }
 
 void IRGenerator::visit(PrototypeAST &ProtoAST) {
@@ -95,7 +97,7 @@ void FunctionVisitor::visit(WhileStmtAST &While) {
 }
 
 void FunctionVisitor::visit(VarStmtAST &Var) {
-  Instruction *Alloca = Fn.emit<AllocaInst>();
+  Instruction *Alloca = Fn.emit<AllocaInst>(std::string(Var.getVarName()));
   NS.update(std::string(Var.getVarName()), Alloca);
 
   auto *Expr = Var.getInit();

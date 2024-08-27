@@ -7,9 +7,11 @@
 
 class Constant : public Value {
 public:
-  Constant(int64_t ID, int64_t Val) : Value(ID), Val(Val) {}
+  Constant(int64_t Val) : Val(Val) {}
 
   void accept(IRVisitor &V) { V.visit(*this); }
+
+  int64_t getVal() const { return Val; }
 
 private:
   int64_t Val;

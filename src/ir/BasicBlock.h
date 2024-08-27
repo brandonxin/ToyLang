@@ -8,8 +8,6 @@
 
 class BasicBlock : public Value {
 public:
-  BasicBlock(int64_t ID) : Value(ID) {}
-
   void accept(IRVisitor &V) override { V.visit(*this); }
 
   bool isLValue() override { return false; }

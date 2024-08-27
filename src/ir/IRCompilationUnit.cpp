@@ -6,14 +6,14 @@ Function *IRCompilationUnit::lookupFunction(const std::string &Name) {
   return (Iter == FunctionTable.end()) ? nullptr : Iter->second;
 }
 
-Function *IRCompilationUnit::makeNewFunction(std::string Name,
-                                             size_t ParamsNum) {
+Function *
+IRCompilationUnit::makeNewFunction(std::string Name,
+                                   const std::vector<std::string> &Params) {
   auto [Iter, success] = FunctionTable.emplace(Name, nullptr);
   if (!success)
     return nullptr;
 
-  auto NewFn =
-      std::make_unique<Function>(std::move(Name), std::move(ParamsNum));
+  auto NewFn = std::make_unique<Function>(std::move(Name), Params);
 
   Iter->second = NewFn.get();
   AllFunctions.emplace_back(std::move(NewFn));

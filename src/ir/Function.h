@@ -15,7 +15,7 @@
 class Function {
 public:
   /// We support only 1 type yet, so there is no need to passing a vector.
-  Function(std::string Name, size_t ParamsNum);
+  Function(std::string Name, const std::vector<std::string> &Params);
 
   void accept(IRVisitor &V) { V.visit(*this); }
 
@@ -48,13 +48,17 @@ public:
     auto Inst = makeValue<T>(std::forward<ArgTs>(Args)...);
     auto *Ret = Inst.get();
     InsertPoint->append(std::move(Inst));
+
+    if (Ret->hasResult() && Ret->getName().empty())
+      Ret->assignNameByNumber(NextValueID++);
+
     return Ret;
   }
 
 private:
   template <typename T, typename... Ts>
   std::unique_ptr<T> makeValue(Ts &&...Args) {
-    return std::make_unique<T>(NextValueID++, std::forward<Ts>(Args)...);
+    return std::make_unique<T>(std::forward<Ts>(Args)...);
   }
 
 private:
@@ -64,6 +68,7 @@ private:
   std::vector<std::unique_ptr<Constant>> AllConstants;
   BasicBlock *InsertPoint = nullptr;
   size_t NextValueID = 0;
+  size_t NextBBID = 0;
 };
 
 #endif // !TOY_LANG_IR_FUNCTION_H

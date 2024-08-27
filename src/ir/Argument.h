@@ -5,7 +5,7 @@
 
 class Argument : public Value {
 public:
-  Argument(int64_t ID) : Value(ID) {}
+  Argument(std::string Name) : Value(std::move(Name)) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
 

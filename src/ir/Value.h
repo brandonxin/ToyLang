@@ -2,12 +2,15 @@
 #define TOY_LANG_IR_VALUE_H
 
 #include <cstdint>
+#include <string>
 
 #include "ir/IRVisitor.h"
 
 class Value {
 public:
-  Value(int64_t ID) : ID(ID) {}
+  // Value(int64_t ID);
+  Value() = default;
+  Value(std::string Name);
   Value(const Value &) = delete;
   Value &operator=(const Value &) = delete;
 
@@ -18,13 +21,16 @@ public:
 
   virtual void accept(IRVisitor &V) = 0;
 
+  virtual bool hasResult() { return false; }
   virtual bool isLValue() { return false; }
   virtual bool isTerminator() { return false; }
 
-  int64_t getID() const { return ID; }
+  void assignName(std::string Name) { this->Name = Name; }
+  void assignNameByNumber(int64_t Num);
+  std::string_view getName() const { return Name; }
 
 private:
-  int64_t ID;
+  std::string Name;
 };
 
 #endif // !TOY_LANG_IR_VALUE_H

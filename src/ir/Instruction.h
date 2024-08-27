@@ -7,15 +7,15 @@
 
 class Instruction : public Value {
 public:
-  Instruction(int64_t ID) : Value(ID) {}
+  Instruction(std::string Name = "") : Value(std::move(Name)) {}
 
   virtual void accept(IRVisitor &V) = 0;
 };
 
 class StoreInst : public Instruction {
 public:
-  StoreInst(int64_t ID, Value *Ptr, Value *Val)
-      : Instruction(ID),
+  StoreInst(Value *Ptr, Value *Val, std::string Name = "")
+      : Instruction(std::move(Name)),
         Ptr(Ptr),
         Val(Val) {}
 
@@ -31,9 +31,11 @@ private:
 
 class LoadInst : public Instruction {
 public:
-  LoadInst(int64_t ID, Value *Ptr) : Instruction(ID), Ptr(Ptr) {}
+  LoadInst(Value *Ptr, std::string Name = "") : Instruction(Name), Ptr(Ptr) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
+
+  bool hasResult() override { return true; }
 
   Value *getPtr() { return Ptr; }
 
@@ -49,12 +51,14 @@ public:
     Mul,
   };
 
-  ArithmeticInst(int64_t ID, Opcode Opc, Value *LHS, Value *RHS)
-      : Instruction(ID),
+  ArithmeticInst(Opcode Opc, Value *LHS, Value *RHS, std::string Name = "")
+      : Instruction(Name),
         Opc(Opc),
         Operands{LHS, RHS} {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
+
+  bool hasResult() override { return true; }
 
   Value *getLHS() { return Operands[0]; }
   Value *getRHS() { return Operands[1]; }
@@ -67,11 +71,14 @@ private:
 
 class ReturnInst : public Instruction {
 public:
-  ReturnInst(int64_t ID, Value *Ret) : Instruction(ID), Ret(Ret) {}
+  ReturnInst(Value *Ret, std::string Name = "")
+      : Instruction(std::move(Name)),
+        Ret(Ret) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
 
   bool isTerminator() override { return true; }
+  bool hasResult() override { return true; }
 
   Value *getVal() { return Ret; }
 

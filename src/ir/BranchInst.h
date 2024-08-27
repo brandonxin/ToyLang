@@ -6,14 +6,16 @@
 
 class BranchInst : public Instruction {
 public:
-  BranchInst(int64_t ID) : Instruction(ID) {}
+  BranchInst(std::string Name = "") : Instruction(std::move(Name)) {}
 
   bool isTerminator() override { return true; }
 };
 
 class JumpInst : public BranchInst {
 public:
-  JumpInst(int64_t ID, BasicBlock *Dest) : BranchInst(ID), Dest(Dest) {}
+  JumpInst(BasicBlock *Dest, std::string Name = "")
+      : BranchInst(std::move(Name)),
+        Dest(Dest) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
 
@@ -25,8 +27,9 @@ private:
 
 class CJumpInst : public BranchInst {
 public:
-  CJumpInst(int64_t ID, Value *Cond, BasicBlock *IfTrue, BasicBlock *IfElse)
-      : BranchInst(ID),
+  CJumpInst(Value *Cond, BasicBlock *IfTrue, BasicBlock *IfElse,
+            std::string Name = "")
+      : BranchInst(std::move(Name)),
         Cond(Cond),
         IfTrue(IfTrue),
         IfElse(IfElse) {}

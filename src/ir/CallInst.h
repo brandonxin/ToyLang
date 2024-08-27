@@ -6,12 +6,15 @@
 
 class CallInst : public Instruction {
 public:
-  CallInst(int64_t ID, Function *Callee, std::vector<Value *> Arguments)
-      : Instruction(ID),
+  CallInst(Function *Callee, std::vector<Value *> Arguments,
+           std::string Name = "")
+      : Instruction(std::move(Name)),
         Callee(Callee),
         Arguments(Arguments) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
+
+  bool hasResult() override { return true; }
 
   Function *getCallee() { return Callee; }
   std::vector<Value *> getArguments() { return Arguments; }

@@ -15,7 +15,8 @@ public:
   auto end() const { return AllFunctions.end(); }
 
   Function *lookupFunction(const std::string &Name);
-  Function *makeNewFunction(std::string Name, size_t ParamsNum);
+  Function *makeNewFunction(std::string Name,
+                            const std::vector<std::string> &Params);
 
 private:
   std::vector<std::unique_ptr<Function>> AllFunctions;

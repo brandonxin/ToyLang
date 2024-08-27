@@ -3,6 +3,8 @@
 #include <algorithm>
 #include <cassert>
 
+#include "fmt/format.h"
+
 #include "ir/AllocaInst.h"
 #include "ir/Argument.h"
 #include "ir/BasicBlock.h"
@@ -11,10 +13,11 @@
 #include "ir/Constant.h"
 #include "ir/Instruction.h"
 
-Function::Function(std::string Name, size_t ParamsNum) : Name(std::move(Name)) {
-  Arguments.reserve(ParamsNum);
-  while (ParamsNum--)
-    Arguments.push_back(makeValue<Argument>());
+Function::Function(std::string Name, const std::vector<std::string> &Params)
+    : Name(std::move(Name)) {
+  Arguments.reserve(Params.size());
+  for (const auto &Param : Params)
+    Arguments.push_back(makeValue<Argument>(Param));
 
   // DO NOT create EntryBlock now, because it can be a external linkage
   // function.
@@ -31,7 +34,10 @@ void Function::setInsertPoint(BasicBlock *B) {
 
 BasicBlock *Function::makeNewBlock() {
   AllBlocks.push_back(makeValue<BasicBlock>());
-  return AllBlocks.back().get();
+  auto *Ret = AllBlocks.back().get();
+  if (Ret->getName().empty())
+    Ret->assignName(fmt::format("BB_{}", NextBBID++));
+  return Ret;
 }
 
 Constant *Function::makeConstant(int64_t Val) {
