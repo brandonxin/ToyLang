@@ -19,6 +19,7 @@ public:
 
   void accept(IRVisitor &V) { V.visit(*this); }
 
+  bool hasReturnValue();
   std::string &getName() { return Name; }
   std::vector<std::unique_ptr<Argument>> &getArgs() { return Arguments; }
 

@@ -17,7 +17,7 @@ public:
   bool hasResult() override { return true; }
 
   Function *getCallee() { return Callee; }
-  std::vector<Value *> getArguments() { return Arguments; }
+  std::vector<Value *> &getArguments() { return Arguments; }
 
 private:
   Function *Callee;

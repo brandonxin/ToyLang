@@ -4,6 +4,7 @@
 #include "irgen/IRGenerator.h"
 #include "parser/ASTDumper.h"
 #include "parser/Parser.h"
+#include "target/aarch64/CodeGenerator.h"
 
 //===----------------------------------------------------------------------===//
 // Main driver code.
@@ -68,5 +69,10 @@ int main(int argc, char *argv[]) {
   Unit.accept(IRGen);
 
   IRDumper(stdout, IRGen.getIR());
+
+  aarch64::AssemblyUnit ASMUnit;
+  aarch64::CodeGenerator CG(ASMUnit);
+  IRGen.getIR().accept(CG);
+
   return 0;
 }
