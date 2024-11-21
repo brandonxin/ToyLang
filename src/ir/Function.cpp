@@ -17,7 +17,7 @@ Function::Function(std::string Name, const std::vector<std::string> &Params)
     : Name(std::move(Name)) {
   Arguments.reserve(Params.size());
   for (const auto &Param : Params)
-    Arguments.push_back(makeValue<Argument>(Param));
+    Arguments.push_back(makeValue<Parameter>(Param));
 
   // DO NOT create EntryBlock now, because it can be a external linkage
   // function.

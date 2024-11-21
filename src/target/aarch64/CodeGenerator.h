@@ -12,18 +12,10 @@ namespace aarch64 {
 
 class CodeGenerator : public IRVisitor {
   AssemblyUnit &Unit;
-  std::array<PhysicalRegister, 32> AllPhysicsRegs;
   std::unordered_map<Function *, Label *> FnTable;
 
 public:
-  CodeGenerator(AssemblyUnit &Unit) : Unit(Unit), AllPhysicsRegs() {}
-
-  PhysicalRegister *getPhysicsReg(int N) {
-    if (N < 0 || N > 31)
-      return nullptr;
-
-    return &AllPhysicsRegs[N];
-  }
+  CodeGenerator(AssemblyUnit &Unit) : Unit(Unit) {}
 
   void visit(IRCompilationUnit &IRUnit) override;
 
@@ -51,7 +43,7 @@ public:
         Proc(Proc) {}
 
   void visit(Function &Fn) override;
-  void visit(Argument &Arg) override;
+  void visit(Parameter &Arg) override;
   void visit(BasicBlock &BB) override;
   void visit(Constant &C) override;
   void visit(AllocaInst &Inst) override;

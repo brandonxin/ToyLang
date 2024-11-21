@@ -5,7 +5,11 @@
 #include <memory>
 #include <vector>
 
+#include "fmt/format.h"
+
 namespace aarch64 {
+
+class AssemblyUnit;
 
 class Operand {
 public:
@@ -15,42 +19,72 @@ public:
   virtual bool isRegister() { return false; }
   virtual bool isConstant() { return false; }
   virtual bool isLabel() { return false; }
+
+  virtual std::string toAsm() = 0;
 };
 
 class Instruction {
 public:
   virtual ~Instruction() = 0;
+
+  virtual std::string toAsm() = 0;
 };
 
 class Label : public Operand {
+  std::string Name;
   std::vector<std::unique_ptr<Instruction>> AllInsts;
 
 public:
+  Label(std::string Name) : Name(std::move(Name)) {}
+
+  std::string toAsm() override { return Name; }
+
+  std::string_view getName() const { return Name; }
+
   void append(std::unique_ptr<Instruction> Inst) {
     // TODO: Add successor if Inst is a branch instruction.
     AllInsts.emplace_back(std::move(Inst));
   }
+
+  const auto &getAllInsts() { return AllInsts; }
 };
 
 class Register : public Operand {
+  std::string Name;
+
 public:
+  Register(std::string Name) : Name(std::move(Name)) {}
+
   bool isRegister() override { return true; }
+  std::string toAsm() override { return Name; }
 };
 
 class VirtualRegister : public Register {
 public:
+  VirtualRegister(std::string Name) : Register(std::move(Name)) {}
 };
 
 class PhysicalRegister : public Register {
 public:
+  PhysicalRegister(std::string Name) : Register(std::move(Name)) {}
 };
 
 class Memory : public Operand {
+  Register *Base;
+  int64_t Offset;
+
 public:
+  Memory(Register *Base, int64_t Offset) : Base(Base), Offset(Offset) {}
+
   bool isMemory() override { return true; }
+
+  std::string toAsm() override;
 };
 
-class StackSlot : public Memory {};
+class StackSlot : public Memory {
+public:
+  StackSlot(PhysicalRegister *SP, int64_t Offset) : Memory(SP, Offset) {}
+};
 
 class ImmediateValue : public Operand {
   int64_t Val;
@@ -59,6 +93,8 @@ public:
   ImmediateValue(int64_t Val) : Val(Val) {}
 
   bool isConstant() override { return true; }
+
+  std::string toAsm() override;
 };
 
 class MOV : public Instruction {
@@ -67,22 +103,28 @@ class MOV : public Instruction {
 
 public:
   MOV(Operand *Target, Operand *Source) : Target(Target), Source(Source) {}
+
+  std::string toAsm() override;
 };
 
 class LDR : public Instruction {
-  Operand *Target;
-  Operand *Source;
+  Operand *Reg;
+  Operand *Ptr;
 
 public:
-  LDR(Operand *Target, Operand *Source) : Target(Target), Source(Source) {}
+  LDR(Operand *Reg, Operand *Ptr) : Reg(Reg), Ptr(Ptr) {}
+
+  std::string toAsm() override;
 };
 
 class STR : public Instruction {
-  Operand *Source;
-  Operand *Target;
+  Operand *Val;
+  Operand *Ptr;
 
 public:
-  STR(Operand *Source, Operand *Target) : Source(Source), Target(Target) {}
+  STR(Operand *Val, Operand *Ptr) : Val(Val), Ptr(Ptr) {}
+
+  std::string toAsm() override;
 };
 
 class B : public Instruction {
@@ -90,6 +132,8 @@ class B : public Instruction {
 
 public:
   B(Label *Target) : Target(Target) {}
+
+  std::string toAsm() override;
 };
 
 class CBNZ : public Instruction {
@@ -98,6 +142,8 @@ class CBNZ : public Instruction {
 
 public:
   CBNZ(Operand *Value, Label *Target) : Value(Value), Target(Target) {}
+
+  std::string toAsm() override;
 };
 
 class BL : public Instruction {
@@ -105,20 +151,27 @@ class BL : public Instruction {
 
 public:
   BL(Label *Callee) : Target(Callee) {}
+
+  std::string toAsm() override;
 };
 
-class RET : public Instruction {};
+class RET : public Instruction {
+public:
+  std::string toAsm() override;
+};
 
-class Add : public Instruction {
+class ADD : public Instruction {
   Operand *Result;
   Operand *LHS;
   Operand *RHS;
 
 public:
-  Add(Operand *Result, Operand *LHS, Operand *RHS)
+  ADD(Operand *Result, Operand *LHS, Operand *RHS)
       : Result(Result),
         LHS(LHS),
         RHS(RHS) {}
+
+  std::string toAsm() override;
 };
 
 class SUB : public Instruction {
@@ -131,6 +184,8 @@ public:
       : Result(Result),
         LHS(LHS),
         RHS(RHS) {}
+
+  std::string toAsm() override;
 };
 
 class MUL : public Instruction {
@@ -143,9 +198,13 @@ public:
       : Result(Result),
         LHS(LHS),
         RHS(RHS) {}
+
+  std::string toAsm() override;
 };
 
 class Procedure {
+  AssemblyUnit &Unit;
+  std::string Name;
   Label *InsertPoint = nullptr;
   Label *Prologue = nullptr;
   Label *Epilogue = nullptr;
@@ -154,21 +213,20 @@ class Procedure {
   std::vector<std::unique_ptr<ImmediateValue>> AllImms;
   std::vector<std::unique_ptr<StackSlot>> AllSlots;
 
+  int NextLabelIndex = 0;
+  int NextVirtualRegisterIndex = 0;
+
 public:
-  Label *makeNewLabel() {
-    AllLabels.emplace_back(std::make_unique<Label>());
-    return AllLabels.back().get();
+  Procedure(AssemblyUnit &Unit, std::string Name)
+      : Unit(Unit),
+        Name(std::move(Name)) {
+    Prologue = makeNewLabel(fmt::format("_{}", this->Name), false);
+    Epilogue = makeNewLabel(fmt::format("epilogue", this->Name));
   }
 
-  Label *makePrologue() {
-    Prologue = makeNewLabel();
-    return Prologue;
-  }
+  std::vector<std::unique_ptr<Label>> &getAllLabels() { return AllLabels; }
 
-  Label *makeEpilogue() {
-    Epilogue = makeNewLabel();
-    return Epilogue;
-  }
+  Label *makeNewLabel(std::string LblName, bool Prefix = true);
 
   Label *getPrologue() { return Prologue; }
 
@@ -183,15 +241,9 @@ public:
     return AllImms.back().get();
   }
 
-  VirtualRegister *makeVirtReg() {
-    AllVirtRegs.emplace_back(std::make_unique<VirtualRegister>());
-    return AllVirtRegs.back().get();
-  }
+  VirtualRegister *makeVirtReg();
 
-  StackSlot *allocateStackSlot() {
-    AllSlots.emplace_back(std::make_unique<StackSlot>());
-    return AllSlots.back().get();
-  }
+  StackSlot *allocateStackSlot();
 
   template <typename T, typename... Ts>
   void emit(Ts &&...Args) {

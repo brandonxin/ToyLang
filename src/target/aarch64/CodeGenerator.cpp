@@ -16,7 +16,7 @@ void CodeGenerator::visit(IRCompilationUnit &IRUnit) {
       continue;
     }
 
-    auto *Proc = Unit.makeNewProcedure();
+    auto *Proc = Unit.makeNewProcedure(Fn->getName());
     FnTable[Fn.get()] = Proc->getEntryLabel();
 
     FunctionCG FnCG(*this, Unit, *Proc);
@@ -29,20 +29,34 @@ Label *CodeGenerator::lookupFunctionEntry(Function *Fn) {
 }
 
 void FunctionCG::visit(Function &Fn) {
-  this->Prologue = Proc.makePrologue();
+  Prologue = Proc.getPrologue();
+  Proc.setInsertPoint(this->Prologue);
+  for (auto &Param : Fn.getArgs())
+    Param->accept(*this);
+
   for (auto &BB : Fn.getBlocks())
-    BBTable[BB.get()] = Proc.makeNewLabel();
-  this->Epilogue = Proc.makeEpilogue();
+    BBTable[BB.get()] = Proc.makeNewLabel(std::string(BB->getName()));
+  this->Epilogue = Proc.getEpilogue();
+
+  for (auto &C : Fn.getConstants())
+    C->accept(*this);
+
+  for (auto &BB : Fn.getBlocks())
+    BB->accept(*this);
 }
 
-void FunctionCG::visit(Argument &Arg) {
-  // For arg[0], ..., arg[7], they should be mapped to physical register x0 - x7
-  if (ArgCnt < 8)
-    ValueTable[&Arg] = CG.getPhysicsReg(ArgCnt++);
-
+void FunctionCG::visit(Parameter &Param) {
   // For arg[8], ..., they should be at old sp (before extend stack space),
   // sp + N (depends on the size of argument), ...
-  assert(false && "More than 8 arguments: unimplemented");
+  assert(ArgCnt < 8 && "More than 8 arguments: unimplemented");
+
+  // For arg[0], ..., arg[7], they should be mapped to physical register x0 - x7
+  // ValueTable[&Param] = Unit.getPhysicsReg(ArgCnt++);
+  auto SS = Proc.allocateStackSlot();
+  Proc.emit<STR>(Unit.getPhysicsReg(ArgCnt), SS);
+  ValueTable[&Param] = SS;
+
+  ++ArgCnt;
 }
 
 void FunctionCG::visit(BasicBlock &BB) {
@@ -69,8 +83,8 @@ void FunctionCG::visit(StoreInst &Inst) {
   auto *Ptr = ValueTable[Inst.getPtr()];
   auto *Val = ValueTable[Inst.getVal()];
   assert(Ptr->isMemory());
-  assert(Val->isRegister());
-  Proc.emit<STR>(Ptr, Val);
+  assert(Val->isConstant() || Val->isRegister());
+  Proc.emit<STR>(Val, Ptr);
 }
 
 void FunctionCG::visit(LoadInst &Inst) {
@@ -86,10 +100,10 @@ void FunctionCG::visit(ArithmeticInst &Inst) {
   auto *LHS = ValueTable[Inst.getLHS()];
   auto *RHS = ValueTable[Inst.getRHS()];
   auto *Result = Proc.makeVirtReg();
-  assert(LHS->isRegister());
-  assert(RHS->isRegister());
+  assert(LHS->isConstant() || LHS->isRegister());
+  assert(RHS->isConstant() || RHS->isRegister());
   switch (Inst.getOpc()) {
-  case ArithmeticInst::Opcode::Add: Proc.emit<Add>(Result, LHS, RHS); break;
+  case ArithmeticInst::Opcode::Add: Proc.emit<ADD>(Result, LHS, RHS); break;
   case ArithmeticInst::Opcode::Sub: Proc.emit<SUB>(Result, LHS, RHS); break;
   case ArithmeticInst::Opcode::Mul: Proc.emit<MUL>(Result, LHS, RHS); break;
   }
@@ -115,12 +129,12 @@ void FunctionCG::visit(CallInst &Inst) {
   for (size_t I = 0; I < Args.size(); ++I) {
     auto *Opr = ValueTable[Args[I]];
     assert(Opr->isConstant() || Opr->isRegister());
-    Proc.emit<MOV>(CG.getPhysicsReg(I), Opr);
+    Proc.emit<MOV>(Unit.getPhysicsReg(I), Opr);
   }
   Proc.emit<BL>(CG.lookupFunctionEntry(Inst.getCallee()));
 
   auto *Ret = Proc.makeVirtReg();
-  Proc.emit<MOV>(Ret, CG.getPhysicsReg(0));
+  Proc.emit<MOV>(Ret, Unit.getPhysicsReg(0));
   ValueTable[&Inst] = Ret;
 }
 
@@ -129,7 +143,7 @@ void FunctionCG::visit(ReturnInst &Inst) {
   if (auto *Ret = Inst.getVal()) {
     auto *Opr = ValueTable[Ret];
     assert(Opr->isConstant() || Opr->isRegister());
-    Proc.emit<MOV>(CG.getPhysicsReg(0), Opr);
+    Proc.emit<MOV>(Unit.getPhysicsReg(0), Opr);
   }
   Proc.emit<B>(Epilogue);
 }

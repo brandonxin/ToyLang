@@ -21,7 +21,7 @@ public:
 
   bool hasReturnValue();
   std::string &getName() { return Name; }
-  std::vector<std::unique_ptr<Argument>> &getArgs() { return Arguments; }
+  std::vector<std::unique_ptr<Parameter>> &getArgs() { return Arguments; }
 
   BasicBlock *makeEntryBlock() {
     assert(AllBlocks.empty() && "EntryBlock exists");
@@ -37,6 +37,9 @@ public:
   }
 
   std::vector<std::unique_ptr<BasicBlock>> &getBlocks() { return AllBlocks; }
+  std::vector<std::unique_ptr<Constant>> &getConstants() {
+    return AllConstants;
+  }
 
   void setInsertPoint(BasicBlock *B);
   BasicBlock *getCurrInsertPoint() const { return InsertPoint; }
@@ -64,7 +67,7 @@ private:
 
 private:
   std::string Name;
-  std::vector<std::unique_ptr<Argument>> Arguments;
+  std::vector<std::unique_ptr<Parameter>> Arguments;
   std::vector<std::unique_ptr<BasicBlock>> AllBlocks;
   std::vector<std::unique_ptr<Constant>> AllConstants;
   BasicBlock *InsertPoint = nullptr;

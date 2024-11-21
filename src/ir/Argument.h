@@ -3,9 +3,9 @@
 
 #include "ir/Value.h"
 
-class Argument : public Value {
+class Parameter : public Value {
 public:
-  Argument(std::string Name) : Value(std::move(Name)) {}
+  Parameter(std::string Name) : Value(std::move(Name)) {}
 
   void accept(IRVisitor &V) override { V.visit(*this); }
 

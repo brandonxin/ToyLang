@@ -4,6 +4,7 @@
 #include "irgen/IRGenerator.h"
 #include "parser/ASTDumper.h"
 #include "parser/Parser.h"
+#include "target/aarch64/AssemblyDumper.h"
 #include "target/aarch64/CodeGenerator.h"
 
 //===----------------------------------------------------------------------===//
@@ -73,6 +74,9 @@ int main(int argc, char *argv[]) {
   aarch64::AssemblyUnit ASMUnit;
   aarch64::CodeGenerator CG(ASMUnit);
   IRGen.getIR().accept(CG);
+
+  aarch64::AssemblyDumper ASMDumper(stdout);
+  ASMDumper.dump(ASMUnit);
 
   return 0;
 }
