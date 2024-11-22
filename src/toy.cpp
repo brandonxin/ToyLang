@@ -6,6 +6,7 @@
 #include "parser/Parser.h"
 #include "target/aarch64/AssemblyDumper.h"
 #include "target/aarch64/CodeGenerator.h"
+#include "target/aarch64/NaiveRegisterAllocator.h"
 
 //===----------------------------------------------------------------------===//
 // Main driver code.
@@ -76,6 +77,11 @@ int main(int argc, char *argv[]) {
   IRGen.getIR().accept(CG);
 
   aarch64::AssemblyDumper ASMDumper(stdout);
+  ASMDumper.dump(ASMUnit);
+  for (auto &Proc : ASMUnit.getDefinedProcedures()) {
+    aarch64::NaiveRegisterAllocator RA(ASMUnit, *Proc);
+    RA.run();
+  }
   ASMDumper.dump(ASMUnit);
 
   return 0;

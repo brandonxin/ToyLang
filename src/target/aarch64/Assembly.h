@@ -1,6 +1,7 @@
 #ifndef TOY_LANG_IR_TARGET_AARCH64_ASSEMBLY_H
 #define TOY_LANG_IR_TARGET_AARCH64_ASSEMBLY_H
 
+#include <list>
 #include <map>
 #include <memory>
 #include <vector>
@@ -10,6 +11,7 @@
 namespace aarch64 {
 
 class AssemblyUnit;
+class VirtualRegister;
 
 class Operand {
 public:
@@ -19,6 +21,9 @@ public:
   virtual bool isRegister() { return false; }
   virtual bool isConstant() { return false; }
   virtual bool isLabel() { return false; }
+  virtual bool isVirtual() { return false; }
+  virtual bool isPhysical() { return false; }
+  virtual void collectVirtRegs(std::vector<Operand **> & /*Src*/) {}
 
   virtual std::string toAsm() = 0;
 };
@@ -27,12 +32,16 @@ class Instruction {
 public:
   virtual ~Instruction() = 0;
 
+  virtual bool isLoad() { return false; }
+
   virtual std::string toAsm() = 0;
+  virtual void collectVirtRegs(std::vector<Operand **> & /*Src*/,
+                               std::vector<Operand **> & /*Dst*/) {}
 };
 
 class Label : public Operand {
   std::string Name;
-  std::vector<std::unique_ptr<Instruction>> AllInsts;
+  std::list<std::unique_ptr<Instruction>> AllInsts;
 
 public:
   Label(std::string Name) : Name(std::move(Name)) {}
@@ -46,7 +55,8 @@ public:
     AllInsts.emplace_back(std::move(Inst));
   }
 
-  const auto &getAllInsts() { return AllInsts; }
+  const auto &getAllInsts() const { return AllInsts; }
+  auto &getAllInsts() { return AllInsts; }
 };
 
 class Register : public Operand {
@@ -62,23 +72,32 @@ public:
 class VirtualRegister : public Register {
 public:
   VirtualRegister(std::string Name) : Register(std::move(Name)) {}
+
+  bool isVirtual() override { return true; }
 };
 
 class PhysicalRegister : public Register {
 public:
   PhysicalRegister(std::string Name) : Register(std::move(Name)) {}
+
+  bool isPhysical() override { return true; }
 };
 
 class Memory : public Operand {
-  Register *Base;
+  Operand *Base;
   int64_t Offset;
 
 public:
-  Memory(Register *Base, int64_t Offset) : Base(Base), Offset(Offset) {}
+  Memory(Operand *Base, int64_t Offset) : Base(Base), Offset(Offset) {}
 
   bool isMemory() override { return true; }
 
   std::string toAsm() override;
+
+  void collectVirtRegs(std::vector<Operand **> &Src) override {
+    if (Base->isVirtual())
+      Src.push_back(&Base);
+  }
 };
 
 class StackSlot : public Memory {
@@ -105,6 +124,22 @@ public:
   MOV(Operand *Target, Operand *Source) : Target(Target), Source(Source) {}
 
   std::string toAsm() override;
+
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> &Dst) override {
+    if (Source->isVirtual())
+      Src.push_back(&Source);
+    else if ((Source)->isMemory())
+      Source->collectVirtRegs(Src);
+
+    if (Target->isVirtual())
+      Dst.push_back(&Target);
+    else if ((Target)->isMemory()) {
+      // NOTE If Target includes a regsiter, then this register will be read,
+      // not be written, thus it should be collected into Src.
+      Target->collectVirtRegs(Src);
+    }
+  }
 };
 
 class LDR : public Instruction {
@@ -114,7 +149,20 @@ class LDR : public Instruction {
 public:
   LDR(Operand *Reg, Operand *Ptr) : Reg(Reg), Ptr(Ptr) {}
 
+  bool isLoad() override { return true; }
+
   std::string toAsm() override;
+
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> &Dst) override {
+    Ptr->collectVirtRegs(Src);
+
+    if (Reg->isVirtual())
+      Dst.push_back(&Reg);
+  }
+
+  Operand *getReg() { return Reg; }
+  Operand *getPtr() { return Ptr; }
 };
 
 class STR : public Instruction {
@@ -125,6 +173,16 @@ public:
   STR(Operand *Val, Operand *Ptr) : Val(Val), Ptr(Ptr) {}
 
   std::string toAsm() override;
+
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> &Dst) override {
+    if (Val->isVirtual())
+      Src.push_back(&Val);
+
+    // NOTE If Target includes a regsiter, then this register will be read,
+    // not be written, thus it should be collected into Src.
+    Ptr->collectVirtRegs(Src);
+  }
 };
 
 class B : public Instruction {
@@ -144,6 +202,14 @@ public:
   CBNZ(Operand *Value, Label *Target) : Value(Value), Target(Target) {}
 
   std::string toAsm() override;
+
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> & /*Dst*/) override {
+    if (Value->isVirtual())
+      Src.push_back(&Value);
+    else if (Value->isMemory())
+      Value->collectVirtRegs(Src);
+  }
 };
 
 class BL : public Instruction {
@@ -172,6 +238,18 @@ public:
         RHS(RHS) {}
 
   std::string toAsm() override;
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> &Dst) override {
+    for (auto Op : {&LHS, &RHS}) {
+      if ((*Op)->isVirtual())
+        Src.push_back(Op);
+      else if ((*Op)->isMemory())
+        (*Op)->collectVirtRegs(Src);
+    }
+
+    if (Result->isVirtual())
+      Dst.push_back(&Result);
+  }
 };
 
 class SUB : public Instruction {
@@ -186,6 +264,18 @@ public:
         RHS(RHS) {}
 
   std::string toAsm() override;
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> &Dst) override {
+    for (auto Op : {&LHS, &RHS}) {
+      if ((*Op)->isVirtual())
+        Src.push_back(Op);
+      else if ((*Op)->isMemory())
+        (*Op)->collectVirtRegs(Src);
+    }
+
+    if (Result->isVirtual())
+      Dst.push_back(&Result);
+  }
 };
 
 class MUL : public Instruction {
@@ -200,6 +290,18 @@ public:
         RHS(RHS) {}
 
   std::string toAsm() override;
+  void collectVirtRegs(std::vector<Operand **> &Src,
+                       std::vector<Operand **> &Dst) override {
+    for (auto Op : {&LHS, &RHS}) {
+      if ((*Op)->isVirtual())
+        Src.push_back(Op);
+      else if ((*Op)->isMemory())
+        (*Op)->collectVirtRegs(Src);
+    }
+
+    if (Result->isVirtual())
+      Dst.push_back(&Result);
+  }
 };
 
 class Procedure {
@@ -248,6 +350,13 @@ public:
   template <typename T, typename... Ts>
   void emit(Ts &&...Args) {
     InsertPoint->append(std::make_unique<T>(std::forward<Ts>(Args)...));
+  }
+
+  template <typename IterT, typename T, typename... Ts>
+  void emitAt(Label &Lbl, IterT Iter, Ts &&...Args) {
+    // InsertPoint->append(std::make_unique<T>(std::forward<Ts>(Args)...));
+    Lbl.getAllInsts().insert(Iter,
+                             std::make_unique<T>(std::forward<Ts>(Args)...));
   }
 };
 
