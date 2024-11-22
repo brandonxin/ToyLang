@@ -75,7 +75,7 @@ Label *Procedure::makeNewLabel(std::string LblName, bool Prefix) {
 
 VirtualRegister *Procedure::makeVirtReg() {
   AllVirtRegs.emplace_back(std::make_unique<VirtualRegister>(
-      fmt::format("v{}", NextVirtualRegisterIndex++)));
+      fmt::format("_t{}", NextVirtualRegisterIndex++)));
   return AllVirtRegs.back().get();
 }
 
